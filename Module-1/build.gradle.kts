@@ -2,7 +2,7 @@ plugins {
     kotlin("jvm") version "2.2.0"
 }
 
-group = "com.journalapp"
+group = "com.Module-1"
 version = "1.0-SNAPSHOT"
 
 repositories {
