@@ -1,0 +1,10 @@
+[
+  { "id": 1, "title": "Купить продукты", "description": "Молоко, хлеб, яйца", "isCompleted": false },
+  { "id": 2, "title": "Позвонить врачу", "description": "Записаться на приём", "isCompleted": false },
+  { "id": 3, "title": "Прочитать книгу", "description": "Дочитать главу 5", "isCompleted": true },
+  { "id": 4, "title": "Сделать зарядку", "description": "30 минут утром", "isCompleted": false },
+  { "id": 5, "title": "Оплатить счета", "description": "Интернет и телефон", "isCompleted": false },
+  { "id": 6, "title": "Написать отчёт", "description": "Сдать до пятницы", "isCompleted": true },
+  { "id": 7, "title": "Убраться дома", "description": "Пылесос и влажная уборка", "isCompleted": false },
+  { "id": 8, "title": "Изучить Kotlin", "description": "Пройти урок по корутинам", "isCompleted": false }
+]
