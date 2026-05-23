@@ -1,0 +1,1 @@
+rootProject.name = "Module6TasksPart4"
