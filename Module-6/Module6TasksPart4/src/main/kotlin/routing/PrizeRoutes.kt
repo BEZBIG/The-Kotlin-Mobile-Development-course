@@ -1,5 +1,8 @@
 package com.example.module6taskspart4.routing
 
+import com.example.module6taskspart4.data.repository.PrizeRepositoryImpl
+import com.example.module6taskspart4.domain.model.Laureate
+import com.example.module6taskspart4.domain.model.NobelPrize
 import com.example.module6taskspart4.domain.usecase.GetAllPrizesUseCase
 import com.example.module6taskspart4.domain.usecase.GetLaureatesUseCase
 import com.example.module6taskspart4.domain.usecase.GetPrizeUseCase
@@ -13,15 +16,30 @@ fun Route.prizeRoutes(
     getPrize: GetPrizeUseCase,
     getLaureates: GetLaureatesUseCase
 ) {
-    // Все маршруты ниже защищены JWT
+    // Временный эндпоинт для заполнения БД тестовыми данными — БЕЗ авторизации
+    post("/prizes/seed") {
+        val repo = PrizeRepositoryImpl()
+        val id = repo.savePrize(
+            NobelPrize(
+                year = "2023",
+                category = "physics",
+                laureates = listOf(
+                    Laureate("1", "Pierre Agostini", "For attosecond pulses of light", "3"),
+                    Laureate("2", "Ferenc Krausz", "For attosecond pulses of light", "3"),
+                    Laureate("3", "Anne L'Huillier", "For attosecond pulses of light", "3")
+                )
+            )
+        )
+        call.respond(HttpStatusCode.OK, mapOf("prizeId" to id))
+    }
+
+    // Защищённые маршруты — требуют JWT токен
     authenticate("auth-jwt") {
 
-        // Список всех премий
         get("/prizes") {
             call.respond(getAllPrizes.execute())
         }
 
-        // Одна премия по году и категории
         get("/prizes/{year}/{category}") {
             val year = call.parameters["year"] ?: return@get call.respond(
                 HttpStatusCode.BadRequest, ErrorResponse("Укажите год")
@@ -37,7 +55,6 @@ fun Route.prizeRoutes(
             }
         }
 
-        // Список лауреатов премии
         get("/prizes/{year}/{category}/laureates") {
             val year = call.parameters["year"] ?: return@get call.respond(
                 HttpStatusCode.BadRequest, ErrorResponse("Укажите год")

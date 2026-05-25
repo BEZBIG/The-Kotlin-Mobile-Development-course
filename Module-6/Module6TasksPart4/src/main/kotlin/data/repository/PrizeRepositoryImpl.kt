@@ -1,95 +1,110 @@
 package com.example.module6taskspart4.data.repository
 
+import com.example.module6taskspart4.data.database.LaureateTable
+import com.example.module6taskspart4.data.database.PrizeTable
+import com.example.module6taskspart4.data.database.UserPrizeTable
 import com.example.module6taskspart4.domain.model.Laureate
 import com.example.module6taskspart4.domain.model.NobelPrize
 import com.example.module6taskspart4.domain.repository.PrizeRepository
+import org.jetbrains.exposed.sql.*
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.transactions.transaction
 
-// Данные хранятся в памяти (in-memory)
 class PrizeRepositoryImpl : PrizeRepository {
 
-    // Тестовые данные — несколько реальных нобелевских премий
-    private val prizes = listOf(
-        NobelPrize(
-            year = "2023",
-            category = "physics",
-            laureates = listOf(
-                Laureate("1", "Pierre Agostini", "For experimental methods that generate attosecond pulses of light", "3"),
-                Laureate("2", "Ferenc Krausz", "For experimental methods that generate attosecond pulses of light", "3"),
-                Laureate("3", "Anne L'Huillier", "For experimental methods that generate attosecond pulses of light", "3")
-            )
-        ),
-        NobelPrize(
-            year = "2023",
-            category = "chemistry",
-            laureates = listOf(
-                Laureate("4", "Moungi G. Bawendi", "For the discovery and synthesis of quantum dots", "3"),
-                Laureate("5", "Louis E. Brus", "For the discovery and synthesis of quantum dots", "3"),
-                Laureate("6", "Alexei I. Ekimov", "For the discovery and synthesis of quantum dots", "3")
-            )
-        ),
-        NobelPrize(
-            year = "2023",
-            category = "medicine",
-            laureates = listOf(
-                Laureate("7", "Katalin Karikó", "For discoveries concerning nucleoside base modifications that enabled the development of effective mRNA vaccines", "2"),
-                Laureate("8", "Drew Weissman", "For discoveries concerning nucleoside base modifications that enabled the development of effective mRNA vaccines", "2")
-            )
-        ),
-        NobelPrize(
-            year = "2023",
-            category = "literature",
-            laureates = listOf(
-                Laureate("9", "Jon Fosse", "Who gives voice to the unsayable", "1")
-            )
-        ),
-        NobelPrize(
-            year = "2023",
-            category = "peace",
-            laureates = listOf(
-                Laureate("10", "Narges Mohammadi", "For her fight against the oppression of women in Iran", "1")
-            )
-        ),
-        NobelPrize(
-            year = "2023",
-            category = "economics",
-            laureates = listOf(
-                Laureate("11", "Claudia Goldin", "For having advanced our understanding of women's labour market outcomes", "1")
-            )
-        ),
-        NobelPrize(
-            year = "2022",
-            category = "physics",
-            laureates = listOf(
-                Laureate("12", "Alain Aspect", "For experiments with entangled photons", "3"),
-                Laureate("13", "John F. Clauser", "For experiments with entangled photons", "3"),
-                Laureate("14", "Anton Zeilinger", "For experiments with entangled photons", "3")
-            )
-        ),
-        NobelPrize(
-            year = "2022",
-            category = "chemistry",
-            laureates = listOf(
-                Laureate("15", "Carolyn R. Bertozzi", "For the development of click chemistry and bioorthogonal chemistry", "3"),
-                Laureate("16", "Morten Meldal", "For the development of click chemistry and bioorthogonal chemistry", "3"),
-                Laureate("17", "K. Barry Sharpless", "For the development of click chemistry and bioorthogonal chemistry", "3")
-            )
-        ),
-        NobelPrize(
-            year = "2022",
-            category = "peace",
-            laureates = listOf(
-                Laureate("18", "Ales Bialiatski", "For their efforts to document war crimes", "3"),
-                Laureate("19", "Memorial", "Human rights organisation in Russia", "3"),
-                Laureate("20", "Center for Civil Liberties", "Human rights organisation in Ukraine", "3")
-            )
+    // Достаём все премии из БД
+    override fun getAllPrizes(): List<NobelPrize> = transaction {
+        PrizeTable.selectAll().map { row ->
+            rowToPrize(row)
+        }
+    }
+
+    // Ищем премию по году и категории
+    override fun getPrize(year: String, category: String): NobelPrize? = transaction {
+        PrizeTable.selectAll()
+            .where { (PrizeTable.awardYear eq year) and (PrizeTable.category eq category) }
+            .firstOrNull()
+            ?.let { rowToPrize(it) }
+    }
+
+    // Достаём лауреатов конкретной премии
+    override fun getLaureates(year: String, category: String): List<Laureate> = transaction {
+        val prize = PrizeTable.selectAll()
+            .where { (PrizeTable.awardYear eq year) and (PrizeTable.category eq category) }
+            .firstOrNull() ?: return@transaction emptyList()
+
+        LaureateTable.selectAll()
+            .where { LaureateTable.prizeId eq prize[PrizeTable.id] }
+            .map { row ->
+                Laureate(
+                    id = row[LaureateTable.id].value.toString(),
+                    name = row[LaureateTable.fullName],
+                    motivation = row[LaureateTable.motivation] ?: "",
+                    share = row[LaureateTable.portion]
+                )
+            }
+    }
+
+    // Сохраняем премию и её лауреатов в БД
+    override fun savePrize(prize: NobelPrize): Int = transaction {
+        val prizeId = PrizeTable.insertAndGetId {
+            it[awardYear] = prize.year
+            it[category] = prize.category
+        }.value
+
+        prize.laureates.forEach { laureate ->
+            LaureateTable.insert {
+                it[LaureateTable.prizeId] = prizeId
+                it[fullName] = laureate.name
+                it[portion] = laureate.share
+                it[motivation] = laureate.motivation
+            }
+        }
+        prizeId
+    }
+
+    // Получаем избранные премии пользователя
+    override fun getFavorites(userId: Int): List<NobelPrize> = transaction {
+        (UserPrizeTable innerJoin PrizeTable)
+            .selectAll()
+            .where { UserPrizeTable.userId eq userId }
+            .map { rowToPrize(it) }
+    }
+
+    // Добавляем премию в избранное
+    override fun addFavorite(userId: Int, prizeId: Int) = transaction {
+        UserPrizeTable.insertIgnore {
+            it[UserPrizeTable.userId] = userId
+            it[UserPrizeTable.prizeId] = prizeId
+        }
+        Unit
+    }
+
+    // Удаляем премию из избранного
+    override fun removeFavorite(userId: Int, prizeId: Int) = transaction {
+        UserPrizeTable.deleteWhere {
+            (UserPrizeTable.userId eq userId) and (UserPrizeTable.prizeId eq prizeId)
+        }
+        Unit
+    }
+
+    // Конвертируем строку БД в доменную модель
+    private fun rowToPrize(row: ResultRow): NobelPrize {
+        val prizeId = row[PrizeTable.id].value
+        val laureates = LaureateTable.selectAll()
+            .where { LaureateTable.prizeId eq prizeId }
+            .map { lr ->
+                Laureate(
+                    id = lr[LaureateTable.id].value.toString(),
+                    name = lr[LaureateTable.fullName],
+                    motivation = lr[LaureateTable.motivation] ?: "",
+                    share = lr[LaureateTable.portion]
+                )
+            }
+        return NobelPrize(
+            year = row[PrizeTable.awardYear],
+            category = row[PrizeTable.category],
+            laureates = laureates
         )
-    )
-
-    override fun getAllPrizes(): List<NobelPrize> = prizes
-
-    override fun getPrize(year: String, category: String): NobelPrize? =
-        prizes.find { it.year == year && it.category == category }
-
-    override fun getLaureates(year: String, category: String): List<Laureate> =
-        getPrize(year, category)?.laureates ?: emptyList()
+    }
 }

@@ -7,7 +7,6 @@ import io.ktor.server.application.*
 import io.ktor.server.auth.*
 import io.ktor.server.auth.jwt.*
 
-// Настраиваем JWT авторизацию
 fun Application.configureAuth() {
     install(Authentication) {
         jwt("auth-jwt") {
