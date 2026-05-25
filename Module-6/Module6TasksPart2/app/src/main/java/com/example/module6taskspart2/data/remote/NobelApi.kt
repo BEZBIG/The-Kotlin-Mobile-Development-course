@@ -1,15 +1,24 @@
 package com.example.module6taskspart2.data.remote
 
-import com.example.module6taskspart2.data.remote.dto.NobelResponseDto
-import com.example.module6taskspart2.data.network.KtorClient
+import com.example.module6taskspart2.data.remote.dto.NobelPrizeDto
+import io.ktor.client.HttpClient
+import io.ktor.client.call.body
+import io.ktor.client.engine.android.Android
+import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.client.request.get
+import io.ktor.client.request.header
+import io.ktor.serialization.kotlinx.json.json
+import kotlinx.serialization.json.Json
 
-// Делает запрос к API и возвращает список премий
-suspend fun fetchNobelPrizes(year: String? = null, category: String? = null): NobelResponseDto {
-    val params = buildMap {
-        put("limit", "25")
-        put("offset", "0")
-        if (year != null) put("nobelPrizeYear", year)
-        if (category != null) put("nobelPrizeCategory", category)
+private val client = HttpClient(Android) {
+    install(ContentNegotiation) {
+        json(Json { ignoreUnknownKeys = true })
     }
-    return KtorClient.get("nobelPrizes", params)
+}
+
+// Получаем список премий с нашего сервера с токеном
+suspend fun fetchNobelPrizes(token: String): List<NobelPrizeDto> {
+    return client.get("http://10.0.2.2:8080/prizes") {
+        header("Authorization", "Bearer $token")
+    }.body()
 }
