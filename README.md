@@ -26,4 +26,4 @@
 3. Демонстрировать прогресс в изучении мобильной разработки на языке Kotlin
 
 
-### Итоговый проект [тут].(https://github.com/BEZBIG/Messenger-WhatsMAX).
+### Итоговый проект [тут](https://github.com/BEZBIG/Messenger-WhatsMAX).
